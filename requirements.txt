@@ -8,3 +8,4 @@ requests
 libgen_api
 unidecode
 thefuzz
+iso639-lang
