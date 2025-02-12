@@ -7,6 +7,7 @@ import logging
 import tempfile
 import threading
 import concurrent.futures
+import iso639
 import requests
 from flask import Flask, render_template
 from flask_socketio import SocketIO
@@ -200,7 +201,7 @@ class DataHandler:
                 if self.readarr_stop_event.is_set():
                     return
                 endpoint = f"{self.readarr_address}/api/v1/wanted/missing"
-                params = {"apikey": self.readarr_api_key, "page": page}
+                params = {"apikey": self.readarr_api_key, "page": page, "includeAuthor": True}
                 response = requests.get(endpoint, params=params, timeout=self.request_timeout)
                 if response.status_code == 200:
                     wanted_missing_items = response.json()
@@ -218,7 +219,23 @@ class DataHandler:
                         author = "".join(reversed(author_with_sep)).title()
                         year = item["releaseDate"][:4]
 
-                        new_item = {"author": author, "book_name": title, "series": series, "checked": True, "status": "", "year": year}
+                        meta_profile_id = item['author']['metadataProfileId']
+                        endpoint = f"{self.readarr_address}/api/v1/metadataprofile/{meta_profile_id}"
+                        params = {"apikey": self.readarr_api_key}
+                        response = requests.get(endpoint, params=params, timeout=self.request_timeout)
+                        languages = []
+                        if response.status_code == 200:
+                            author_meta_profile = response.json()
+                            iso_langs = author_meta_profile["allowedLanguages"]
+                            languages = [iso639.Lang(iso).name.lower() for iso in iso_langs.split(",") if iso639.is_language(iso)]
+
+                        if languages == []:
+                            self.general_logger.error(f"Readarr MetadataProfile API Error Code: {response.status_code}")
+                            self.general_logger.error(f"Unable to get language from metadata profile for author: {author}\nUsing default.")
+                            languages = [l.lower().strip() for l in self.selected_language.split(",")]
+
+
+                        new_item = {"author": author, "book_name": title, "series": series, "checked": True, "status": "", "year": year, "languages": languages}
                         self.readarr_items.append(new_item)
                     page += 1
                 else:
@@ -374,8 +391,7 @@ class DataHandler:
                 try:
                     with self.libgen_thread_lock:
                         s = LibgenSearch()
-                        title_filters = {"Language": self.selected_language}
-                        results = s.search_title_filtered(book_search_text, title_filters, exact_match=False)
+                        results = s.search_title(book_search_text)
                         self.general_logger.warning(f"Found {len(results)} potential matches")
 
                 except Exception as e:
@@ -386,7 +402,8 @@ class DataHandler:
                     author_name_match_ratio = self.compare_author_names(item["Author"], author)
                     book_name_match_ratio = fuzz.ratio(item["Title"], book_name)
                     average_match_ratio = (author_name_match_ratio + book_name_match_ratio) / 2
-                    if average_match_ratio > self.minimum_match_ratio:
+                    language_check = language.lower() in req_item["languages"] or self.selected_language.lower() == "all"
+                    if average_match_ratio > self.minimum_match_ratio and language_check:
                         download_links = s.resolve_download_links(item)
                         found_links = [value for value in download_links.values()]
                         break
@@ -431,7 +448,7 @@ class DataHandler:
                             except:
                                 file_type = ".epub"
                             file_type_check = any(ft.replace(".", "").lower() in file_type for ft in self.preferred_extensions_fiction)
-                            language_check = language.lower() == self.selected_language.lower() or self.selected_language.lower() == "all"
+                            language_check = language.lower() in req_item["languages"] or self.selected_language.lower() == "all"
 
                             if file_type_check and language_check:
                                 author_name_match_ratio = self.compare_author_names(author, author_string)

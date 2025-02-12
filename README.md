@@ -44,7 +44,7 @@ Certain values can be set via environment variables:
 * __library_scan_on_completion__: Whether to scan Readarr Library on completion. Defaults to `True`.
 * __request_timeout__: Timeout for requests (seconds). Defaults to `120`.
 * __thread_limit__: Max number of threads to use. Defaults to `1`.
-* __selected_language__: Filter download by language (specific language or all). Defaults to `English`.
+* __selected_language__: Filter download by languages (specific languages or all). Defaults to `English`. This is used if BookBounty is unable to get the languages from the Readarr Metadata Profile.
 * __preferred_extensions_fiction__: Filter fiction download by extension (comma separated). Defaults to `.epub, .mobi, .azw3, .djvu`.
 * __preferred_extensions_non_fiction__: Filter non-fiction download by extension (comma separated). Defaults to `.pdf .epub, .mobi, .azw3, .djvu`.
 * __search_last_name_only__: Use only the author's last name in searches. Defaults to `False`.
