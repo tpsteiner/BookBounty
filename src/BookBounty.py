@@ -223,19 +223,19 @@ class DataHandler:
                         endpoint = f"{self.readarr_address}/api/v1/metadataprofile/{meta_profile_id}"
                         params = {"apikey": self.readarr_api_key}
                         response = requests.get(endpoint, params=params, timeout=self.request_timeout)
-                        languages = []
+                        allowed_languages = []
                         if response.status_code == 200:
                             author_meta_profile = response.json()
                             iso_langs = author_meta_profile["allowedLanguages"]
-                            languages = [iso639.Lang(iso).name.lower() for iso in iso_langs.split(",") if iso639.is_language(iso)]
+                            allowed_languages = [iso639.Lang(iso).name.lower() for iso in iso_langs.split(",") if iso639.is_language(iso)]
 
-                        if languages == []:
+                        if allowed_languages == []:
                             self.general_logger.error(f"Readarr MetadataProfile API Error Code: {response.status_code}")
                             self.general_logger.error(f"Unable to get language from metadata profile for author: {author}\nUsing default.")
-                            languages = [l.lower().strip() for l in self.selected_language.split(",")]
+                            allowed_languages = [l.lower().strip() for l in self.selected_language.split(",")]
 
 
-                        new_item = {"author": author, "book_name": title, "series": series, "checked": True, "status": "", "year": year, "languages": languages}
+                        new_item = {"author": author, "book_name": title, "series": series, "checked": True, "status": "", "year": year, "allowed_languages": allowed_languages}
                         self.readarr_items.append(new_item)
                     page += 1
                 else:
@@ -377,7 +377,7 @@ class DataHandler:
 
     def _link_finder(self, req_item):
         try:
-            self.general_logger.warning(f'Searching for Book: {req_item["author"]} - {req_item["book_name"]}')
+            self.general_logger.warning(f'Searching for Book: {req_item["author"]} - {req_item["book_name"]} - Allowed Languages: {",".join(req_item["allowed_languages"])}')
             author = req_item["author"]
             book_name = req_item["book_name"]
 
@@ -402,7 +402,7 @@ class DataHandler:
                     author_name_match_ratio = self.compare_author_names(item["Author"], author)
                     book_name_match_ratio = fuzz.ratio(item["Title"], book_name)
                     average_match_ratio = (author_name_match_ratio + book_name_match_ratio) / 2
-                    language_check = language.lower() in req_item["languages"] or self.selected_language.lower() == "all"
+                    language_check = item["Language"].lower() in req_item["allowed_languages"] or self.selected_language.lower() == "all"
                     if average_match_ratio > self.minimum_match_ratio and language_check:
                         download_links = s.resolve_download_links(item)
                         found_links = [value for value in download_links.values()]
@@ -448,7 +448,7 @@ class DataHandler:
                             except:
                                 file_type = ".epub"
                             file_type_check = any(ft.replace(".", "").lower() in file_type for ft in self.preferred_extensions_fiction)
-                            language_check = language.lower() in req_item["languages"] or self.selected_language.lower() == "all"
+                            language_check = language.lower() in req_item["allowed_languages"] or self.selected_language.lower() == "all"
 
                             if file_type_check and language_check:
                                 author_name_match_ratio = self.compare_author_names(author, author_string)
