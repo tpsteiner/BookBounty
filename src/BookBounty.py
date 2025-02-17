@@ -58,7 +58,7 @@ class DataHandler:
             "readarr_address": "http://192.168.1.2:8787",
             "readarr_api_key": "",
             "request_timeout": 120.0,
-            "libgen_address": "http://libgen.is",
+            "libgen_address": "http://libgen.li",
             "thread_limit": 1,
             "sleep_interval": 0,
             "search_type": "fiction",
