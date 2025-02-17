@@ -1,5 +1,5 @@
 # BookBounty
-test workflow change
+test workflw change
 ![Build Status](https://github.com/TheWicklowWolf/BookBounty/actions/workflows/main.yml/badge.svg)
 ![Docker Pulls](https://img.shields.io/docker/pulls/thewicklowwolf/bookbounty.svg)
 
